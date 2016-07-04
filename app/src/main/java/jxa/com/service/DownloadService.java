@@ -2,7 +2,6 @@ package jxa.com.service;
 
 import android.app.Service;
 import android.content.Intent;
-import android.icu.util.Measure;
 import android.os.Environment;
 import android.os.Handler;
 import android.os.IBinder;
@@ -13,11 +12,9 @@ import android.util.Log;
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
-import java.io.Serializable;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.net.URLConnection;
 
 import jxa.com.bean.FileInfo;
 
@@ -31,6 +28,7 @@ public class DownloadService extends Service {
     public static final String ACTION_UPDATE = "ACTION_UPDATE";
     public static final String DOWNLOAD_PATH = Environment.getExternalStorageDirectory().getAbsolutePath() + "/mydownloads/";
     public static final int MSG_INIT = 0;
+    private DownloadTask downloadTask;
 
     @Nullable
     @Override
@@ -45,6 +43,9 @@ public class DownloadService extends Service {
                 case MSG_INIT:
                     FileInfo fileInfo = (FileInfo) msg.obj;
                     Log.e("获取到的下载信息",fileInfo.toString());
+                    //开始下载
+                    downloadTask = new DownloadTask(DownloadService.this, fileInfo);
+                    downloadTask.download();
                     break;
             }
         }
@@ -60,6 +61,10 @@ public class DownloadService extends Service {
         } else if (ACTION_STOP.equals(intent.getAction())) {
             FileInfo fileInfo = (FileInfo) intent.getSerializableExtra("fileInfo");
             Log.e("fileInfo", "停止" + fileInfo.toString());
+            if (downloadTask != null) {
+                downloadTask.isPause = true;
+            }
+
         }
         return super.onStartCommand(intent, flags, startId);
     }

@@ -25,7 +25,7 @@ public class DownloadTask {
     private Context context;
     private FileInfo fileInfo;
     private int finished = 0;
-    private boolean isPause = false;
+    public boolean isPause = false;
 
     public DownloadTask(Context context, FileInfo fileInfo) {
         this.context = context;
@@ -78,7 +78,7 @@ public class DownloadTask {
                     Intent intent = new Intent(DownloadService.ACTION_UPDATE);
                     finished += threadInfo.getFinished();
                     //开始下载
-                    if (code == 200) {
+                    if (code == 206) {
                         //读取数据
                         inputStream = conn.getInputStream();
                         byte[] buffer = new byte[1024 * 4];

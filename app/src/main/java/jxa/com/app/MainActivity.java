@@ -1,6 +1,9 @@
 package jxa.com.app;
 
+import android.content.BroadcastReceiver;
+import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.view.View;
@@ -45,6 +48,7 @@ public class MainActivity extends AppCompatActivity {
                 startService(intent);
             }
         });
+
     }
 
     private void initView() {
@@ -54,6 +58,25 @@ public class MainActivity extends AppCompatActivity {
         mStop = (Button) findViewById(R.id.stop);
         pb_download.setMax(100);
         fileInfo = new FileInfo(1, "http://img.mukewang.com/down/574cf68700013a9f00000000.rar", 0, 0, "574cf68700013a9f00000000.rar");
+        IntentFilter filter = new IntentFilter();
+        filter.addAction(DownloadService.ACTION_UPDATE);
+        registerReceiver(mReceiver,filter);
     }
 
+    BroadcastReceiver mReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (DownloadService.ACTION_UPDATE.equals(intent.getAction())) {
+                //更新下载进度
+                int finish = intent.getIntExtra("finish",0);
+                pb_download.setProgress(finish);
+            }
+        }
+    };
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        unregisterReceiver(mReceiver);
+    }
 }
