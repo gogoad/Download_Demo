@@ -15,6 +15,8 @@ import java.io.RandomAccessFile;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 import jxa.com.bean.FileInfo;
 
@@ -26,9 +28,10 @@ public class DownloadService extends Service {
     public static final String ACTION_START = "ACTION_START";
     public static final String ACTION_STOP = "ACTION_STOP";
     public static final String ACTION_UPDATE = "ACTION_UPDATE";
+    public static final String ACTION_FINISH = "ACTION_FINISH";
     public static final String DOWNLOAD_PATH = Environment.getExternalStorageDirectory().getAbsolutePath() + "/mydownloads/";
     public static final int MSG_INIT = 0;
-    private DownloadTask downloadTask;
+    private Map<Integer,DownloadTask> taskMap = new LinkedHashMap<Integer,DownloadTask>();
 
     @Nullable
     @Override
@@ -44,9 +47,9 @@ public class DownloadService extends Service {
                     FileInfo fileInfo = (FileInfo) msg.obj;
                     Log.e("获取到的下载信息",fileInfo.toString());
                     //开始下载
-                    downloadTask = new DownloadTask(DownloadService.this, fileInfo);
+                    DownloadTask downloadTask = new DownloadTask(DownloadService.this, fileInfo,3);
                     downloadTask.download();
-
+                    taskMap.put(fileInfo.getId(),downloadTask);
                     break;
             }
         }
@@ -61,7 +64,7 @@ public class DownloadService extends Service {
             initDownload(fileInfo);
         } else if (ACTION_STOP.equals(intent.getAction())) {
             FileInfo fileInfo = (FileInfo) intent.getSerializableExtra("fileInfo");
-            Log.e("fileInfo", "停止" + fileInfo.toString());
+            DownloadTask downloadTask = taskMap.get(fileInfo.getId());
             if (downloadTask != null) {
                 downloadTask.isPause = true;
             }
@@ -109,11 +112,11 @@ public class DownloadService extends Service {
                     e.printStackTrace();
                 } finally {
 
-                    try {
-                        raf.close();
+                  /*  try {
+                       // raf.close();
                     } catch (IOException e) {
                         e.printStackTrace();
-                    }
+                    }*/
                     conn.disconnect();
                 }
             }

@@ -11,6 +11,7 @@ import java.io.RandomAccessFile;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.ArrayList;
 import java.util.List;
 
 import jxa.com.bean.FileInfo;
@@ -27,10 +28,14 @@ public class DownloadTask {
     private FileInfo fileInfo;
     private int finished = 0;
     public boolean isPause = false;
+    private int ThreadCount = 1;
+    private List<downLoadThread> threadList;
 
-    public DownloadTask(Context context, FileInfo fileInfo) {
+
+    public DownloadTask(Context context, FileInfo fileInfo, int ThreadCount) {
         this.context = context;
         this.fileInfo = fileInfo;
+        this.ThreadCount = ThreadCount;
         threadDAO = new ThreadDAOImpl(context);
     }
 
@@ -38,15 +43,45 @@ public class DownloadTask {
 
         //读取数据库的线程信息
         List<ThreadInfo> infoList = threadDAO.getThreads(fileInfo.getUrl());
-        ThreadInfo threadInfo = null;
         if (infoList.size() == 0) {
-            //初始化线程信息对象
-            threadInfo = new ThreadInfo(1, fileInfo.getUrl(), 0, fileInfo.getLength(), 0);
-        } else {
-            threadInfo = infoList.get(0);
+            //获取每个线程下载的长度
+            int length = fileInfo.getLength() / ThreadCount;
+            for (int i = 0; i < ThreadCount; i++) {
+                ThreadInfo threadInfo = new ThreadInfo(i, fileInfo.getUrl(), length * i, (i + 1) * length - 1, 0);
+                if (i == ThreadCount - 1) {
+                    threadInfo.setEnd(fileInfo.getLength());
+                }
+                //添加信息到集合中取
+                infoList.add(threadInfo);
+                //向数据库插入线程信息
+                threadDAO.insertThread(threadInfo);
+            }
         }
-        //创建子线程进行下载
-        new downLoadThread(threadInfo).start();
+        threadList = new ArrayList<downLoadThread>();
+        //启动多个线程进行下载
+        for (ThreadInfo info : infoList) {
+            downLoadThread thread = new downLoadThread(info);
+            thread.start();
+            threadList.add(thread);
+        }
+    }
+
+    //判断线程是否全部执行完毕
+    private synchronized void checkAllThreadFinished() {
+        boolean allFinish = true;
+        for (downLoadThread thread : threadList) {
+            if (!thread.isFinished) {
+                allFinish = false;
+                break;
+            }
+        }
+        if (allFinish) {
+            //删除线程信息
+            threadDAO.deleteThread(fileInfo.getUrl());
+            Intent intent = new Intent(DownloadService.ACTION_FINISH);
+            intent.putExtra("finish", fileInfo);
+            context.sendBroadcast(intent);
+        }
     }
 
     //下载线程
@@ -56,6 +91,7 @@ public class DownloadTask {
         private RandomAccessFile raf;
         private HttpURLConnection conn;
         private ThreadInfo threadInfo;
+        public Boolean isFinished = false;//线程是否执行完毕
 
         public downLoadThread(ThreadInfo threadInfo) {
             this.threadInfo = threadInfo;
@@ -64,10 +100,7 @@ public class DownloadTask {
 
         @Override
         public void run() {
-            //向数据库插入线程信息
-            if (!threadDAO.isExists(threadInfo.getUrl(), threadInfo.getId())) {
-                threadDAO.insertThread(threadInfo);
-            }
+
 
             try {
                 URL url = new URL(threadInfo.getUrl());
@@ -98,19 +131,27 @@ public class DownloadTask {
                         //写入文件
                         raf.write(buffer, 0, len);
                         //把下载进度发送广播到activity
+                        //整个文件下载的进度
                         finished += len;
+                        //每个线程完成的进度
+                        threadInfo.setFinished(threadInfo.getFinished() + len);
+                        if (System.currentTimeMillis() - time > 500) {
+                            time = System.currentTimeMillis();
                             intent.putExtra("finish", finished * 100 / fileInfo.getLength());
+                            intent.putExtra("id", fileInfo.getId());
                             context.sendBroadcast(intent);
                             Log.e("开始下载", inputStream + "");
-
+                        }
                         //在下载暂停时，保存下载进度
                         if (isPause) {
-                            threadDAO.updateThread(threadInfo.getUrl(), threadInfo.getId(), finished);
+                            threadDAO.updateThread(threadInfo.getUrl(), threadInfo.getId(), threadInfo.getFinished());
                             return;
                         }
                     }
-                    //删除线程信息
-                    threadDAO.deleteThread(threadInfo.getUrl(), threadInfo.getId());
+                    //线程执行完毕
+                    isFinished = true;
+
+                    checkAllThreadFinished();
                 }
             } catch (MalformedURLException e) {
                 e.printStackTrace();

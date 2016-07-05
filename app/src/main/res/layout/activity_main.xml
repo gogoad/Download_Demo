@@ -5,29 +5,9 @@
     android:layout_height="match_parent"
     android:orientation="vertical">
 
-    <TextView
-        android:id="@+id/tv_name"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Hello World!" />
-
-    <ProgressBar
-        android:id="@+id/pb_download"
-        style="?android:attr/progressBarStyleHorizontal"
+    <ListView
+        android:id="@+id/lvdownload"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginLeft="10dp"
-        android:layout_marginRight="10dp" />
-    <Button
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:id="@+id/start"
-        android:text="开始下载" />
-
-    <Button
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:id="@+id/stop"
-        android:text="停止下载" />
+        android:layout_height="match_parent" />
 
 </LinearLayout>
