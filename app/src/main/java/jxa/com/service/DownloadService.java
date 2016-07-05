@@ -46,6 +46,7 @@ public class DownloadService extends Service {
                     //开始下载
                     downloadTask = new DownloadTask(DownloadService.this, fileInfo);
                     downloadTask.download();
+
                     break;
             }
         }
@@ -107,12 +108,13 @@ public class DownloadService extends Service {
                 } catch (IOException e) {
                     e.printStackTrace();
                 } finally {
-                    conn.disconnect();
+
                     try {
                         raf.close();
                     } catch (IOException e) {
                         e.printStackTrace();
                     }
+                    conn.disconnect();
                 }
             }
         }.start();

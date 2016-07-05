@@ -48,7 +48,9 @@ public class MainActivity extends AppCompatActivity {
                 startService(intent);
             }
         });
-
+        IntentFilter filter = new IntentFilter();
+        filter.addAction(DownloadService.ACTION_UPDATE);
+        registerReceiver(mReceiver,filter);
     }
 
     private void initView() {
@@ -58,9 +60,7 @@ public class MainActivity extends AppCompatActivity {
         mStop = (Button) findViewById(R.id.stop);
         pb_download.setMax(100);
         fileInfo = new FileInfo(1, "http://img.mukewang.com/down/574cf68700013a9f00000000.rar", 0, 0, "574cf68700013a9f00000000.rar");
-        IntentFilter filter = new IntentFilter();
-        filter.addAction(DownloadService.ACTION_UPDATE);
-        registerReceiver(mReceiver,filter);
+
     }
 
     BroadcastReceiver mReceiver = new BroadcastReceiver() {
