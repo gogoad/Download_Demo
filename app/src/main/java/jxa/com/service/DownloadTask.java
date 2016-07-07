@@ -13,6 +13,8 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import jxa.com.bean.FileInfo;
 import jxa.com.bean.ThreadInfo;
@@ -30,6 +32,8 @@ public class DownloadTask {
     public boolean isPause = false;
     private int ThreadCount = 1;
     private List<downLoadThread> threadList;
+    //线程池的使用
+    public static ExecutorService executorService = Executors.newCachedThreadPool();
 
 
     public DownloadTask(Context context, FileInfo fileInfo, int ThreadCount) {
@@ -61,7 +65,8 @@ public class DownloadTask {
         //启动多个线程进行下载
         for (ThreadInfo info : infoList) {
             downLoadThread thread = new downLoadThread(info);
-            thread.start();
+            //thread.start();
+            DownloadTask.executorService.execute(thread);
             threadList.add(thread);
         }
     }

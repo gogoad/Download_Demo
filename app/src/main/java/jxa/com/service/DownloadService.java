@@ -31,7 +31,7 @@ public class DownloadService extends Service {
     public static final String ACTION_FINISH = "ACTION_FINISH";
     public static final String DOWNLOAD_PATH = Environment.getExternalStorageDirectory().getAbsolutePath() + "/mydownloads/";
     public static final int MSG_INIT = 0;
-    private Map<Integer,DownloadTask> taskMap = new LinkedHashMap<Integer,DownloadTask>();
+    private Map<Integer, DownloadTask> taskMap = new LinkedHashMap<Integer, DownloadTask>();
 
     @Nullable
     @Override
@@ -45,11 +45,11 @@ public class DownloadService extends Service {
             switch (msg.what) {
                 case MSG_INIT:
                     FileInfo fileInfo = (FileInfo) msg.obj;
-                    Log.e("获取到的下载信息",fileInfo.toString());
+                    Log.e("获取到的下载信息", fileInfo.toString());
                     //开始下载
-                    DownloadTask downloadTask = new DownloadTask(DownloadService.this, fileInfo,3);
+                    DownloadTask downloadTask = new DownloadTask(DownloadService.this, fileInfo, 3);
                     downloadTask.download();
-                    taskMap.put(fileInfo.getId(),downloadTask);
+                    taskMap.put(fileInfo.getId(), downloadTask);
                     break;
             }
         }
@@ -61,7 +61,8 @@ public class DownloadService extends Service {
         if (ACTION_START.equals(intent.getAction())) {
             FileInfo fileInfo = (FileInfo) intent.getSerializableExtra("fileInfo");
             Log.e("fileInfo", "开始" + fileInfo.toString());
-            initDownload(fileInfo);
+            initDownload initDownloadThread = new initDownload(fileInfo);
+            DownloadTask.executorService.execute(initDownloadThread);
         } else if (ACTION_STOP.equals(intent.getAction())) {
             FileInfo fileInfo = (FileInfo) intent.getSerializableExtra("fileInfo");
             DownloadTask downloadTask = taskMap.get(fileInfo.getId());
@@ -73,53 +74,58 @@ public class DownloadService extends Service {
         return super.onStartCommand(intent, flags, startId);
     }
 
-    public void initDownload(final FileInfo mFlieInfo) {
-        new Thread() {
-            private RandomAccessFile raf;
-            private HttpURLConnection conn;
+    class initDownload extends Thread {
 
-            @Override
-            public void run() {
+        private RandomAccessFile raf;
+        private HttpURLConnection conn;
+        private FileInfo mFlieInfo;
+
+        public initDownload(FileInfo mFlieInfo) {
+            this.mFlieInfo = mFlieInfo;
+        }
+
+        @Override
+        public void run() {
+            try {
+                //连接网络文件
+                URL url = new URL(mFlieInfo.getUrl());
+                conn = (HttpURLConnection) url.openConnection();
+                conn.setRequestMethod("GET");
+                conn.setConnectTimeout(3000);
+                int code = conn.getResponseCode();
+                int length = -1;
+                if (code == 200) {
+                    //获取文件长度
+                    length = conn.getContentLength();
+                }
+                if (length <= 0) {
+                    return;
+                }
+                File dir = new File(DOWNLOAD_PATH);
+                if (!dir.exists()) {
+                    dir.mkdir();
+                }
+                //在本地创建文件
+                File file = new File(dir, mFlieInfo.getFilename());
+                raf = new RandomAccessFile(file, "rwd");
+                //设置文件长度
+                raf.setLength(length);
+                mFlieInfo.setLength(length);
+                mHandler.obtainMessage(MSG_INIT, mFlieInfo).sendToTarget();
+            } catch (MalformedURLException e) {
+                e.printStackTrace();
+            } catch (IOException e) {
+                e.printStackTrace();
+            } finally {
+
                 try {
-                    //连接网络文件
-                    URL url = new URL(mFlieInfo.getUrl());
-                    conn = (HttpURLConnection) url.openConnection();
-                    conn.setRequestMethod("GET");
-                    conn.setConnectTimeout(3000);
-                    int code = conn.getResponseCode();
-                    int length = -1;
-                    if (code == 200) {
-                        //获取文件长度
-                        length = conn.getContentLength();
-                    }
-                    if (length <= 0) {
-                        return;
-                    }
-                    File dir = new File(DOWNLOAD_PATH);
-                    if (!dir.exists()) {
-                        dir.mkdir();
-                    }
-                    //在本地创建文件
-                    File file = new File(dir, mFlieInfo.getFilename());
-                    raf = new RandomAccessFile(file, "rwd");
-                    //设置文件长度
-                    raf.setLength(length);
-                    mFlieInfo.setLength(length);
-                    mHandler.obtainMessage(MSG_INIT, mFlieInfo).sendToTarget();
-                } catch (MalformedURLException e) {
-                    e.printStackTrace();
+                    raf.close();
                 } catch (IOException e) {
                     e.printStackTrace();
-                } finally {
-
-                    try {
-                        raf.close();
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
-                    conn.disconnect();
                 }
+                conn.disconnect();
             }
-        }.start();
+        }
     }
 }
+
