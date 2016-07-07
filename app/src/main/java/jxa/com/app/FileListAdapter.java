@@ -45,6 +45,7 @@ public class FileListAdapter extends BaseAdapter {
 
     @Override
     public View getView(int positon, View view, ViewGroup viewGroup) {
+        final FileInfo fileInfo = mFile.get(positon);
         ViewHolder holder;
         if (view == null) {
             holder = new ViewHolder();
@@ -53,32 +54,31 @@ public class FileListAdapter extends BaseAdapter {
             holder.pb_download = (ProgressBar) view.findViewById(R.id.pb_download);
             holder.start = (Button) view.findViewById(R.id.start);
             holder.stop = (Button) view.findViewById(R.id.stop);
+            holder.tv_name.setText(fileInfo.getFilename());
+            holder.pb_download.setMax(100);
+            holder.start.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View view) {
+                    Intent intent = new Intent(context, DownloadService.class);
+                    intent.setAction(DownloadService.ACTION_START);
+                    intent.putExtra("fileInfo", fileInfo);
+                    context.startService(intent);
+                }
+            });
+            holder.stop.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View view) {
+                    Intent intent = new Intent(context, DownloadService.class);
+                    intent.setAction(DownloadService.ACTION_STOP);
+                    intent.putExtra("fileInfo", fileInfo);
+                    context.startService(intent);
+                }
+            });
             view.setTag(holder);
         }else{
             holder = (ViewHolder) view.getTag();
         }
-        final FileInfo fileInfo = mFile.get(positon);
-        holder.tv_name.setText(fileInfo.getFilename());
-        holder.pb_download.setMax(100);
         holder.pb_download.setProgress(fileInfo.getFinished());
-        holder.start.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                Intent intent = new Intent(context, DownloadService.class);
-                intent.setAction(DownloadService.ACTION_START);
-                intent.putExtra("fileInfo", fileInfo);
-                context.startService(intent);
-            }
-        });
-        holder.stop.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                Intent intent = new Intent(context, DownloadService.class);
-                intent.setAction(DownloadService.ACTION_STOP);
-                intent.putExtra("fileInfo", fileInfo);
-                context.startService(intent);
-            }
-        });
         return view;
     }
 

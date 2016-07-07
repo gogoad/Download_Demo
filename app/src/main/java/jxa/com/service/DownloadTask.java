@@ -81,7 +81,7 @@ public class DownloadTask {
             Intent intent = new Intent(DownloadService.ACTION_FINISH);
             intent.putExtra("finish", fileInfo);
             context.sendBroadcast(intent);
-        }
+    }
     }
 
     //下载线程
@@ -135,7 +135,7 @@ public class DownloadTask {
                         finished += len;
                         //每个线程完成的进度
                         threadInfo.setFinished(threadInfo.getFinished() + len);
-                        if (System.currentTimeMillis() - time > 500) {
+                        if (System.currentTimeMillis() - time > 1000) {
                             time = System.currentTimeMillis();
                             intent.putExtra("finish", finished * 100 / fileInfo.getLength());
                             intent.putExtra("id", fileInfo.getId());
@@ -163,6 +163,8 @@ public class DownloadTask {
                 try {
                     raf.close();
                     inputStream.close();
+                    Log.e("raf关闭了",raf+"");
+                    Log.e("inputStream关闭了",inputStream+"");
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
