@@ -13,6 +13,8 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -34,6 +36,8 @@ public class DownloadTask {
     private List<downLoadThread> threadList;
     //线程池的使用
     public static ExecutorService executorService = Executors.newCachedThreadPool();
+    //使用定时器
+    private Timer timer = new Timer();
 
 
     public DownloadTask(Context context, FileInfo fileInfo, int ThreadCount) {
@@ -69,6 +73,16 @@ public class DownloadTask {
             DownloadTask.executorService.execute(thread);
             threadList.add(thread);
         }
+        //启动定时任务，每隔一秒执行一次
+        timer.schedule(new TimerTask() {
+            @Override
+            public void run() {
+                Intent intent = new Intent(DownloadService.ACTION_UPDATE);
+                intent.putExtra("finish", finished * 100 / fileInfo.getLength());
+                intent.putExtra("id", fileInfo.getId());
+                context.sendBroadcast(intent);
+            }
+        }, 1000, 1000);
     }
 
     //判断线程是否全部执行完毕
@@ -81,12 +95,14 @@ public class DownloadTask {
             }
         }
         if (allFinish) {
+            //取消定时器
+            timer.cancel();
             //删除线程信息
             threadDAO.deleteThread(fileInfo.getUrl());
             Intent intent = new Intent(DownloadService.ACTION_FINISH);
             intent.putExtra("finish", fileInfo);
             context.sendBroadcast(intent);
-    }
+        }
     }
 
     //下载线程
@@ -105,8 +121,6 @@ public class DownloadTask {
 
         @Override
         public void run() {
-
-
             try {
                 URL url = new URL(threadInfo.getUrl());
                 conn = (HttpURLConnection) url.openConnection();
@@ -121,14 +135,12 @@ public class DownloadTask {
                 raf = new RandomAccessFile(file, "rwd");
                 //设置下载的开始位置
                 raf.seek(start);
-                Intent intent = new Intent(DownloadService.ACTION_UPDATE);
+
                 finished += threadInfo.getFinished();
                 //开始下载
                 if (conn.getResponseCode() == 206) {
-
                     //读取数据
                     inputStream = conn.getInputStream();
-
                     byte[] buffer = new byte[1024 * 4];
                     int len = -1;
                     long time = System.currentTimeMillis();
@@ -140,13 +152,6 @@ public class DownloadTask {
                         finished += len;
                         //每个线程完成的进度
                         threadInfo.setFinished(threadInfo.getFinished() + len);
-                        if (System.currentTimeMillis() - time > 1000) {
-                            time = System.currentTimeMillis();
-                            intent.putExtra("finish", finished * 100 / fileInfo.getLength());
-                            intent.putExtra("id", fileInfo.getId());
-                            context.sendBroadcast(intent);
-                            Log.e("开始下载", inputStream + "");
-                        }
                         //在下载暂停时，保存下载进度
                         if (isPause) {
                             threadDAO.updateThread(threadInfo.getUrl(), threadInfo.getId(), threadInfo.getFinished());
@@ -155,7 +160,6 @@ public class DownloadTask {
                     }
                     //线程执行完毕
                     isFinished = true;
-
                     checkAllThreadFinished();
                 }
             } catch (MalformedURLException e) {
@@ -163,13 +167,12 @@ public class DownloadTask {
             } catch (IOException e) {
                 e.printStackTrace();
             } finally {
-
                 conn.disconnect();
                 try {
                     raf.close();
                     inputStream.close();
-                    Log.e("raf关闭了",raf+"");
-                    Log.e("inputStream关闭了",inputStream+"");
+                    Log.e("raf关闭了", raf + "");
+                    Log.e("inputStream关闭了", inputStream + "");
                 } catch (IOException e) {
                     e.printStackTrace();
                 }

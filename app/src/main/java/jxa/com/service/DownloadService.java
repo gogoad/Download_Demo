@@ -50,6 +50,9 @@ public class DownloadService extends Service {
                     DownloadTask downloadTask = new DownloadTask(DownloadService.this, fileInfo, 3);
                     downloadTask.download();
                     taskMap.put(fileInfo.getId(), downloadTask);
+                    Intent intent = new Intent(DownloadService.ACTION_START);
+                    intent.putExtra("fileInfo",fileInfo);
+                    sendBroadcast(intent);
                     break;
             }
         }

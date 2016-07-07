@@ -16,12 +16,14 @@ import java.util.List;
 
 import jxa.com.bean.FileInfo;
 import jxa.com.service.DownloadService;
+import jxa.com.utlis.NotificationUtil;
 
 public class MainActivity extends AppCompatActivity {
 
     private ListView lvdownload;
     List<FileInfo> fileInfoList = new ArrayList<FileInfo>();
     private FileListAdapter adapter;
+    NotificationUtil notificationUtil = null;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -36,7 +38,11 @@ public class MainActivity extends AppCompatActivity {
         IntentFilter filter = new IntentFilter();
         filter.addAction(DownloadService.ACTION_UPDATE);
         filter.addAction(DownloadService.ACTION_FINISH);
+        filter.addAction(DownloadService.ACTION_START);
         registerReceiver(mReceiver, filter);
+        //初始化通知工具类
+        notificationUtil = new NotificationUtil(this);
+
     }
 
     private void initView() {
@@ -51,6 +57,7 @@ public class MainActivity extends AppCompatActivity {
         fileInfoList.add(fileInfo3);
         adapter = new FileListAdapter(this, fileInfoList);
         lvdownload.setAdapter(adapter);
+
     }
 
     BroadcastReceiver mReceiver = new BroadcastReceiver() {
@@ -61,10 +68,15 @@ public class MainActivity extends AppCompatActivity {
                 int finish = intent.getIntExtra("finish", 0);
                 int id = intent.getIntExtra("id", 0);
                 adapter.updateProgress(id, finish);
+                notificationUtil.updateNofication(id,finish);
             } else if (DownloadService.ACTION_FINISH.equals(intent.getAction())) {
                 FileInfo fileInfo = (FileInfo) intent.getSerializableExtra("finish");
                 adapter.updateProgress(fileInfo.getId(), 0);
                 Toast.makeText(MainActivity.this, fileInfoList.get(fileInfo.getId()).getFilename()+"下载完毕", Toast.LENGTH_SHORT).show();
+                notificationUtil.cancelNotification(fileInfo.getId());
+            }else if (DownloadService.ACTION_START.equals(intent.getAction())) {
+                //显示通知
+                notificationUtil.showNotification((FileInfo) intent.getSerializableExtra("fileInfo"));
             }
         }
     };
