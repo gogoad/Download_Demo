@@ -2,6 +2,9 @@ package jxa.com.app;
 
 import android.content.Context;
 import android.content.Intent;
+import android.os.Message;
+import android.os.Messenger;
+import android.os.RemoteException;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -22,10 +25,15 @@ import jxa.com.service.DownloadService;
 public class FileListAdapter extends BaseAdapter {
 
     private List<FileInfo> mFile = new ArrayList<FileInfo>();
+    private Messenger messenger = null;
     private Context context;
     public FileListAdapter(Context context,List<FileInfo> mFile) {
         this.mFile = mFile;
         this.context = context;
+    }
+
+    public void setMessenger(Messenger messenger) {
+        this.messenger = messenger;
     }
 
     @Override
@@ -59,19 +67,35 @@ public class FileListAdapter extends BaseAdapter {
             holder.start.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View view) {
-                    Intent intent = new Intent(context, DownloadService.class);
+                  /*  Intent intent = new Intent(context, DownloadService.class);
                     intent.setAction(DownloadService.ACTION_START);
                     intent.putExtra("fileInfo", fileInfo);
-                    context.startService(intent);
+                    context.startService(intent);*/
+                    Message msg = new Message();
+                    msg.what = DownloadService.MSG_START;
+                    msg.obj = fileInfo;
+                    try {
+                        messenger.send(msg);
+                    } catch (RemoteException e) {
+                        e.printStackTrace();
+                    }
                 }
             });
             holder.stop.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View view) {
-                    Intent intent = new Intent(context, DownloadService.class);
+                 /*   Intent intent = new Intent(context, DownloadService.class);
                     intent.setAction(DownloadService.ACTION_STOP);
                     intent.putExtra("fileInfo", fileInfo);
-                    context.startService(intent);
+                    context.startService(intent);*/
+                    Message msg = new Message();
+                    msg.what = DownloadService.MSG_STOP;
+                    msg.obj = fileInfo;
+                    try {
+                        messenger.send(msg);
+                    } catch (RemoteException e) {
+                        e.printStackTrace();
+                    }
                 }
             });
             view.setTag(holder);

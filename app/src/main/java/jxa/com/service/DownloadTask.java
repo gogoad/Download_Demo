@@ -2,6 +2,9 @@ package jxa.com.service;
 
 import android.content.Context;
 import android.content.Intent;
+import android.os.Message;
+import android.os.Messenger;
+import android.os.RemoteException;
 import android.util.Log;
 
 import java.io.File;
@@ -38,11 +41,13 @@ public class DownloadTask {
     public static ExecutorService executorService = Executors.newCachedThreadPool();
     //使用定时器
     private Timer timer = new Timer();
+    private Messenger messenger = null;
 
 
-    public DownloadTask(Context context, FileInfo fileInfo, int ThreadCount) {
+    public DownloadTask(Context context,Messenger messenger,FileInfo fileInfo, int ThreadCount) {
         this.context = context;
         this.fileInfo = fileInfo;
+        this.messenger = messenger;
         this.ThreadCount = ThreadCount;
         threadDAO = new ThreadDAOImpl(context);
     }
@@ -77,10 +82,19 @@ public class DownloadTask {
         timer.schedule(new TimerTask() {
             @Override
             public void run() {
-                Intent intent = new Intent(DownloadService.ACTION_UPDATE);
+             /*   Intent intent = new Intent(DownloadService.ACTION_UPDATE);
                 intent.putExtra("finish", finished * 100 / fileInfo.getLength());
                 intent.putExtra("id", fileInfo.getId());
-                context.sendBroadcast(intent);
+                context.sendBroadcast(intent);*/
+                Message msg =  new Message();
+                msg.what = DownloadService.MSG_UPDATE;
+                msg.arg1 = finished * 100 / fileInfo.getLength();
+                msg.arg2 = fileInfo.getId();
+                try {
+                    messenger.send(msg);
+                } catch (RemoteException e) {
+                    e.printStackTrace();
+                }
             }
         }, 1000, 1000);
     }
@@ -99,9 +113,16 @@ public class DownloadTask {
             timer.cancel();
             //删除线程信息
             threadDAO.deleteThread(fileInfo.getUrl());
-            Intent intent = new Intent(DownloadService.ACTION_FINISH);
+           /* Intent intent = new Intent(DownloadService.ACTION_FINISH);
             intent.putExtra("finish", fileInfo);
-            context.sendBroadcast(intent);
+            context.sendBroadcast(intent);*/
+            Message msg = new Message();
+            msg.obj = fileInfo;
+            try {
+                messenger.send(msg);
+            } catch (RemoteException e) {
+                e.printStackTrace();
+            }
         }
     }
 
